@@ -1,0 +1,18 @@
+{
+  "name": "level-couch-sync",
+  "version": "0.0.0",
+  "description": "syncronize couchdb data into leveldb",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "leveldb",
+    "couchdb",
+    "sync",
+    "replicate"
+  ],
+  "author": "Dominic Tarr <dominic.tarr@gmail.com> (dominictarr.com)",
+  "license": "BSD"
+}
