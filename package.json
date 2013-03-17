@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "levelup": "~0.6.0",
-    "range-bucket": "0.0.6"
+    "padded-semver": "~1.0.1",
+    "level-sublevel": "~3.3.1"
   }
 }
