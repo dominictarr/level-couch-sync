@@ -2,44 +2,75 @@ var request    = require('request')
 var follow     = require('follow')
 var EventEmitter = require('events').EventEmitter
 
-module.exports = function (db, opts) {
+module.exports = function (sourceUrl, db, metaDb, map) {
   var emitter = new EventEmitter
   var seq = 0
-  var url    = opts.url
-  var map = opts.map || function (e, emit) {
+  var map = map || function (e, emit) {
     emit(e.id, JSON.stringify(e.doc))
   }
-  var prefix = opts.prefix || ''
   var maxSeq
-  request.get(opts.db, function (err, _, body) {
+
+  if('string' === typeof metaDb)
+    metaDb = db.sublevel(metaDb)
+
+  request.get(sourceUrl, function (err, _, body) {
     var data = JSON.parse(body)
     maxSeq = data.update_seq
+    emitter.maxSeq = maxSeq
+    emitter.emit('max', maxSeq)
+    if(seq)
+      emitter.emit('progress', seq / maxSeq)
   })
 
-  db.get(prefix + '\xFFSEQ', function (err, val) {
+  metaDb.get('update_seq', function (err, val) {
 
-    seq = Number(val) || 0, percent = 0
+    var seq = Number(val) || 0, inFlight = null, queue = []
 
-    var ws = db.writeStream()
+    function write() {
+      if(inFlight) return
+      if(!queue.length) return
+      inFlight = queue
+      queue = []
+      var update_seq = seq
+      inFlight.push({key: 'update_seq', value: seq, prefix: metaDb, type: 'put'})
 
-    follow({db: opts.db, include_docs: true, since: seq}, function (err, data) {
+      db.batch(inFlight, function (err) {
+        if(err) {
+          inFlight.pop() //seq
+          while(inFlight.length)
+            queue.unshift(inFlight.pop())
+          return setTimeout(function () {
+            inFlight = null
+            write()
+          }, 10000) //try again in a bit.
+        }
+        inFlight = null
+        write()
+        emitter.emit('progress', update_seq / maxSeq)
+      })
+    }
+
+    follow({db: sourceUrl, include_docs: true, since: seq}, function (err, data) {
       if(err) return
       
-      var push = [], _seq = seq, done = false
-      map(data, function (key, val) {
+      var _seq = seq, done = false
+
+      map(data, function (key, val, prefix) {
         if(done) throw new Error('map must not be async')
-        push.push({key: prefix+key, value: val})
+        if(key.type) queue.push(key)
+        else queue.push({key: key, value: val, prefix: prefix, type: 'put'})
       })
 
       if(data.seq > seq) seq = data.seq
-      push.push({key: prefix+'\xFFSEQ', value: seq})
 
       done = true
-      if(!opts.dry)
-        while(push.length)
-          ws.write(push.shift())
+      //TODO: REWRITE TO USE batches instead of streams.
+
+      //ADD if write is in flight, wait until it's finished before writing again.
+      //if not, start a write.
+
+      if(!inFlight) write()
       emitter.emit('data', data)
-      emitter.emit('progress', seq / maxSeq)
     })
   })
 
