@@ -3,10 +3,11 @@ var levelCouchSync = require('../')
 var levelup = require('levelup')
 var sublevel = require('level-sublevel')
 var pad = require('padded-semver').pad
+var os = require('os')
 
 // Use the level-sublevel plugin to create two sublevels, one for packages
 // and one for metadata on all versions of that package
-var db = sublevel(levelup(process.env.HOME + '/.level-npm-advanced'))
+var db = sublevel(levelup(os.tmpdir() + '/level-npm-advanced'))
 var packageDb = db.sublevel('package')
 var versionDb = db.sublevel('version')
 
