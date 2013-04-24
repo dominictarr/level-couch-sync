@@ -1,11 +1,20 @@
-var levelCouchSync = require('./')
+// Dependencies
+var levelCouchSync = require('../')
+var levelup = require('levelup')
+var sublevel = require('level-sublevel')
 var pad = require('padded-semver').pad
+var os = require('os')
 
-if(!module.parent) {
-  var db = require('level-sublevel')(require('levelup')(process.env.HOME + '/.level-npm'))
-  var packageDb = db.sublevel('package')
-  var versionDb = db.sublevel('version')
-  levelCouchSync('http://isaacs.iriscouch.com/registry', db, 'registry-sync', 
+// Use the level-sublevel plugin to create two sublevels, one for packages
+// and one for metadata on all versions of that package
+var db = sublevel(levelup(os.tmpdir() + '/level-npm-advanced'))
+var packageDb = db.sublevel('package')
+var versionDb = db.sublevel('version')
+
+// The sync. The callback extracts the data it wants from the 'data'
+// parameter and emits data into different sublevels
+// 'sync' is an EventEmitter, which we can attach listeners to
+levelCouchSync('http://isaacs.iriscouch.com/registry', db, 'registry-sync',
     function (data, emit) {
       var doc = data.doc
 
@@ -36,9 +45,8 @@ if(!module.parent) {
     })
     .on('data', function (data) {
       console.log(data.id, data.doc.versions && Object.keys(data.doc.versions))
-    })
+     })
     .on('progress', function (ratio) {
-      console.log(Math.floor(ratio*10000)/100)
-    })
-}
+      console.log(Math.floor(ratio*10000)/100 + '%')
+     })
 
