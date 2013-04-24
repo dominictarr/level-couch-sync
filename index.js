@@ -3,6 +3,9 @@ var follow     = require('follow')
 var EventEmitter = require('events').EventEmitter
 
 module.exports = function (sourceUrl, db, metaDb, map) {
+  if (!metaDb || 'function' === typeof metaDb)
+    throw new Error('meta db *must* be a string or a level-sublevel instance')
+
   var emitter = new EventEmitter
   var seq = 0
   var map = map || function (e, emit) {
