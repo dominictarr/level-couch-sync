@@ -3,6 +3,12 @@ var levelCouchSync = require('../')
 var levelup = require('levelup')
 var sublevel = require('level-sublevel')
 var os = require('os')
+var memwatch       = require('memwatch')
+
+memwatch.on('stats', function(stats) {
+  // do something with post-gc memory usage stats
+  console.error('stats', stats)
+})
 
 // Create a level-sublevel instance to store the documents
 var db = sublevel(levelup(os.tmpdir() + '/level-npm-basic'))
