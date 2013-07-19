@@ -19,7 +19,7 @@
   "devDependencies": {
     "levelup": "~0.8.0",
     "padded-semver": "~1.0.1",
-    "level-sublevel": "~3.3.1",
+    "level-sublevel": ">=4.3 <5",
     "memwatch": "~0.2.2"
   }
 }
