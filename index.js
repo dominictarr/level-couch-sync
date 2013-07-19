@@ -9,7 +9,10 @@ module.exports = function (sourceUrl, db, metaDb, map) {
   var emitter = new EventEmitter
   var seq = 0
   var map = map || function (e, emit) {
-    emit(e.id, JSON.stringify(e.doc))
+    //empty key is not allowed
+    //yet it does seem to be allowed in couchdb.
+    if(e.id)
+      emit(e.id, JSON.stringify(e.doc))
   }
   var maxSeq
 
@@ -28,7 +31,6 @@ module.exports = function (sourceUrl, db, metaDb, map) {
   metaDb.get('update_seq', function (err, val) {
 
     var seq = Number(val) || 0, inFlight = null, queue = []
-
     function write() {
       if(inFlight) return
       if(!queue.length) return
@@ -45,7 +47,7 @@ module.exports = function (sourceUrl, db, metaDb, map) {
           return setTimeout(function () {
             inFlight = null
             write()
-          }, 10000) //try again in a bit.
+          }, 1000) //try again in a bit.
         }
         inFlight = null
         write()
@@ -71,7 +73,6 @@ module.exports = function (sourceUrl, db, metaDb, map) {
 
       //ADD if write is in flight, wait until it's finished before writing again.
       //if not, start a write.
-
       if(!inFlight) write()
       emitter.emit('data', data)
     })
