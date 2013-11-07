@@ -24,7 +24,13 @@ module.exports = function (sourceUrl, db, metaDb, map) {
 
   request.get(sourceUrl, function (err, _, body) {
     if(err) return console.error(err.stack)
-    var data = JSON.parse(body)
+    var data
+    try {
+      data = JSON.parse(body)
+    } catch (err) {
+      console.error(body)
+      return console.error(err.stack)
+    }
     maxSeq = data.update_seq
     emitter.maxSeq = maxSeq
     emitter.emit('max', maxSeq)
