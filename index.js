@@ -1,6 +1,6 @@
 var request    = require('request')
 var follow     = require('follow')
-var backoff    = require('backoff')
+var backoff    = require('backoff').fibonacci
 var EventEmitter = require('events').EventEmitter
 
 module.exports = function (sourceUrl, db, metaDb, map) {
@@ -20,7 +20,7 @@ module.exports = function (sourceUrl, db, metaDb, map) {
   if('string' === typeof metaDb)
     metaDb = db.sublevel(metaDb)
 
-  var fb = backoff.fibonacci({
+  var fb = backoff({
     randomisationFactor: 0,
     initialDelay: 1000,
     maxDelay: 30 * 1000
@@ -43,12 +43,14 @@ module.exports = function (sourceUrl, db, metaDb, map) {
       emitter.emit('max', maxSeq)
       if(seq)
         emitter.emit('progress', seq / maxSeq)
+      metaDb.get('update_seq', onseq)
+      fb.reset()
     })
   })
   fb.backoff()
 
-  metaDb.get('update_seq', function (err, val) {
-
+  function onseq (err, val) {
+ 
     var seq = Number(val) || 0, inFlight = null, queue = []
     function write() {
       if(inFlight) return
@@ -74,8 +76,8 @@ module.exports = function (sourceUrl, db, metaDb, map) {
       })
     }
 
-    follow({db: sourceUrl, include_docs: true, since: seq}, function (err, data) {
-      if(err) return
+    follower(sourceUrl, seq, function (err, data) {
+      if (err) return emitter.emit('fail', err)
       
       var _seq = seq, done = false
 
@@ -95,9 +97,24 @@ module.exports = function (sourceUrl, db, metaDb, map) {
       if(!inFlight) write()
       emitter.emit('data', data)
     })
-  })
+  }
 
   return emitter
 }
 
-
+function follower (sourceUrl, seq, cb) {
+  var fb = backoff({
+    randomisationFactor: 0,
+    initialDelay: 1000,
+    maxDelay: 30 * 1000
+  })
+  fb.on('ready', function () {
+    function onfollow (err, data) {
+      cb(err, data)
+      if (err) fb.backoff()
+      else fb.reset()
+    }
+    follow({db: sourceUrl, include_docs: true, since: seq}, onfollow)
+  })
+  fb.backoff()
+}
