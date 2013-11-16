@@ -91,6 +91,9 @@ level-couch-sync emits various events as the leveldb is syncronized with the cou
 
 * `sync.emit('data', data)` emitted for each data object received from the couch
 * `sync.emit('progress', ratio)` emitted each time data has been written to levelup. The `ratio` is defined as how much data that has been written from the current update sequence. When there is something to be read from the couch then `0 < ratio < 1.0` and when `ratio > 1.0` it means we are syncing live!
+* `sync.emit('fail', err)` emitted when there is an error fetching the
+`sourceUrl` from couchdb before the request will be tried again using fibonacci
+backoff
 * `sync.emit('max', maxSeq)` emitted when a request has been made to the source url. `maxSeq` is the value of the `update_seq` property in the JSON response
 
 # License

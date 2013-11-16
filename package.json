@@ -14,7 +14,8 @@
   "license": "MIT",
   "dependencies": {
     "request": "~2.14.0",
-    "follow": "~0.8.0"
+    "follow": "~0.8.0",
+    "backoff": "~2.3.0"
   },
   "devDependencies": {
     "levelup": "~0.8.0",
