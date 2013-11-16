@@ -1,5 +1,6 @@
 var request    = require('request')
 var follow     = require('follow')
+var backoff    = require('backoff')
 var EventEmitter = require('events').EventEmitter
 
 module.exports = function (sourceUrl, db, metaDb, map) {
@@ -19,24 +20,32 @@ module.exports = function (sourceUrl, db, metaDb, map) {
   if('string' === typeof metaDb)
     metaDb = db.sublevel(metaDb)
 
-  //TODO retry if network goes down.
-  //just use request directly? instead of follow?
-
-  request.get(sourceUrl, function (err, _, body) {
-    if(err) return console.error(err.stack)
-    var data
-    try {
-      data = JSON.parse(body)
-    } catch (err) {
-      console.error(body)
-      return console.error(err.stack)
-    }
-    maxSeq = data.update_seq
-    emitter.maxSeq = maxSeq
-    emitter.emit('max', maxSeq)
-    if(seq)
-      emitter.emit('progress', seq / maxSeq)
+  var fb = backoff.fibonacci({
+    randomisationFactor: 0,
+    initialDelay: 1000,
+    maxDelay: 30 * 1000
   })
+  fb.on('ready', function () {
+    request.get(sourceUrl, function (err, _, body) {
+      if(err) {
+        emitter.emit('fail', err)
+        return fb.backoff()
+      }
+      var data
+      try {
+        data = JSON.parse(body)
+      } catch (err) {
+        emitter.emit('fail', new Error('failed to parse json: ' + body))
+        return fb.backoff()
+      }
+      maxSeq = data.update_seq
+      emitter.maxSeq = maxSeq
+      emitter.emit('max', maxSeq)
+      if(seq)
+        emitter.emit('progress', seq / maxSeq)
+    })
+  })
+  fb.backoff()
 
   metaDb.get('update_seq', function (err, val) {
 
