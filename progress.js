@@ -1,6 +1,10 @@
 var createBar = require('another-progress-bar')
 
 module.exports = function (db, name, tagline) {
+  name = name || db.sourceUrl
+  tagline = tagline || function (doc) {
+    return doc.id + '@' + doc._rev
+  }
   var bar = createBar('syncing with ' + name + '...')
   var counter =
   db
