@@ -96,6 +96,19 @@ level-couch-sync emits various events as the leveldb is syncronized with the cou
 backoff
 * `sync.emit('max', maxSeq)` emitted when a request has been made to the source url. `maxSeq` is the value of the `update_seq` property in the JSON response
 
+## progress bar
+
+you can create a progress bar like used in [npmd](github.com/dominictarr/npmd#sync),
+just provide a name for the couchdb, and a function that returns a tagline describing
+the document that was updated.
+
+``` js
+sync.createProgressBar(name, function (data) {
+  return toTagline(data)
+})
+```
+by default, `name` is the url of the couchdb instance, and the tagline will be `doc._id+'@'+doc._rev`
+
 # License
 
 MIT
