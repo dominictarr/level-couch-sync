@@ -2,12 +2,12 @@ var request    = require('request')
 var follow     = require('follow')
 var backoff    = require('backoff').fibonacci
 var EventEmitter = require('events').EventEmitter
+var bar        = require('another-progress-bar')
 
 module.exports = function (sourceUrl, db, metaDb, map) {
   if (!metaDb || 'function' === typeof metaDb)
     throw new Error('meta db *must* be a string or a level-sublevel instance')
 
-  var emitter = new EventEmitter
   var seq = 0
   var map = map || function (e, emit) {
     //empty key is not allowed
@@ -15,17 +15,26 @@ module.exports = function (sourceUrl, db, metaDb, map) {
     if(e.id)
       emit(e.id, JSON.stringify(e.doc))
   }
-  var maxSeq
+  var maxSeq, seq
 
   if('string' === typeof metaDb)
     metaDb = db.sublevel(metaDb)
+
+  metaDb.sourceUrl = sourceUrl
+
+  var emitter = metaDb
 
   var fb = backoff({
     randomisationFactor: 0,
     initialDelay: 1000,
     maxDelay: 30 * 1000
   })
+  fb.on('backoff', function (n, d) {
+    emitter.emit('backoff',n , d)
+  })
+
   fb.on('ready', function () {
+    emitter.emit('ready')
     request.get(sourceUrl, function (err, _, body) {
       if(err) {
         emitter.emit('fail', err)
@@ -43,15 +52,18 @@ module.exports = function (sourceUrl, db, metaDb, map) {
       emitter.emit('max', maxSeq)
       if(seq)
         emitter.emit('progress', seq / maxSeq)
-      metaDb.get('update_seq', onseq)
+      else
+        metaDb.get('update_seq', onseq)
       fb.reset()
     })
   })
   fb.backoff()
 
+  metaDb.get('update_seq', onseq)
+
   function onseq (err, val) {
  
-    var seq = Number(val) || 0, inFlight = null, queue = []
+    seq = Number(val) || 0, inFlight = null, queue = []
     function write() {
       if(inFlight) return
       if(!queue.length) return
@@ -90,13 +102,16 @@ module.exports = function (sourceUrl, db, metaDb, map) {
       if(data.seq > seq) seq = data.seq
 
       done = true
-      //TODO: REWRITE TO USE batches instead of streams.
 
       //ADD if write is in flight, wait until it's finished before writing again.
       //if not, start a write.
       if(!inFlight) write()
       emitter.emit('data', data)
     })
+  }
+
+  emitter.createProgressBar = function (name, tagline) {
+    require('./progress')(emitter, name, tagline)
   }
 
   return emitter
