@@ -31,6 +31,12 @@ module.exports = function (db, name, tagline) {
   .on('progress', function (ratio) {
     bar.progress(Math.floor(ratio*10000)/100, 100)
   })
+  .on('retry', function () {
+    bar.label('disconnected from '+name+' , attempting to reconnect')
+  })
+  .on('timeout', function () {
+    bar.label('timeout: no data from ' + name)
+  })
   .on('data', function (data) {
     var s = tagline(data)
     if(s)
