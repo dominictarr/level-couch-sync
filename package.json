@@ -1,6 +1,6 @@
 {
   "name": "level-couch-sync",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "syncronize couchdb data into leveldb",
   "main": "index.js",
   "repository": {
