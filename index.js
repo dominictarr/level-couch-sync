@@ -61,6 +61,31 @@ module.exports = function (sourceUrl, db, metaDb, map) {
 
   metaDb.get('update_seq', onseq)
 
+
+  function follower (sourceUrl, seq, cb) {
+    var fb = backoff({
+      randomisationFactor: 0,
+      initialDelay: 1000,
+      maxDelay: 30 * 1000
+    })
+    fb.on('ready', function () {
+      function onfollow (err, data) {
+        cb(err, data)
+        if (err) fb.backoff()
+        else fb.reset()
+      }
+      
+      var f =
+      follow({db: sourceUrl, include_docs: true, since: seq}, onfollow)
+
+      ;['retry', 'timeout', 'confirm_request', 'confirm', 'timeout', 'wait']
+      .forEach(function (name) {
+        f.on(name, function (a) { emitter.emit(name, a) })
+      })
+    })
+    fb.backoff()
+  }
+
   function onseq (err, val) {
  
     seq = Number(val) || 0, inFlight = null, queue = []
@@ -117,19 +142,3 @@ module.exports = function (sourceUrl, db, metaDb, map) {
   return emitter
 }
 
-function follower (sourceUrl, seq, cb) {
-  var fb = backoff({
-    randomisationFactor: 0,
-    initialDelay: 1000,
-    maxDelay: 30 * 1000
-  })
-  fb.on('ready', function () {
-    function onfollow (err, data) {
-      cb(err, data)
-      if (err) fb.backoff()
-      else fb.reset()
-    }
-    follow({db: sourceUrl, include_docs: true, since: seq}, onfollow)
-  })
-  fb.backoff()
-}
