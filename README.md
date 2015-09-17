@@ -98,7 +98,7 @@ backoff
 
 ## progress bar
 
-you can create a progress bar like used in [npmd](github.com/dominictarr/npmd#sync),
+you can create a progress bar like used in [npmd](https://github.com/dominictarr/npmd#sync),
 just provide a name for the couchdb, and a function that returns a tagline describing
 the document that was updated.
 
