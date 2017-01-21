@@ -8,7 +8,8 @@ module.exports = function (sourceUrl, db, metaDb, map) {
   if (!metaDb || 'function' === typeof metaDb)
     throw new Error('meta db *must* be a string or a level-sublevel instance')
 
-  var seq = 0
+  var seq = 0;
+  var queue, inFlight;
   var map = map || function (e, emit) {
     //empty key is not allowed
     //yet it does seem to be allowed in couchdb.
